@@ -396,3 +396,7 @@ The converter accepts an optional PSR-3 logger. It logs warnings when tags fall 
 ```php
 $converter = new BlockConverter($registry, $logger);
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).

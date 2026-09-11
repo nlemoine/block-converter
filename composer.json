@@ -1,6 +1,7 @@
 {
     "name": "n5s/block-converter",
     "description": "A library to convert legacy or arbitrary HTML content into WordPress blocks.",
+    "license": "MIT",
     "type": "library",
     "keywords": [
         "wordpress",
