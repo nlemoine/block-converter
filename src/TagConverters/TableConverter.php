@@ -36,10 +36,15 @@ class TableConverter implements TagConverterInterface
         $content = $this->ensureTbody($content, $element);
         $content = $this->addCellDataAlignAttributes($content);
 
+        // What the editor writes for a table, minus what it writes only for
+        // tables it created: "regular" is the default style and is never
+        // serialised, and hasFixedLayout defaults to true in block.json, so a
+        // legacy table that renders with an automatic layout has to say so or
+        // the editor expects a has-fixed-layout class the markup lacks.
         return new Block(
             blockName: 'table',
-            attributes: ['className' => 'is-style-regular'],
-            innerContent: [\sprintf('<figure class="wp-block-table is-style-regular">%s</figure>', $content)],
+            attributes: ['hasFixedLayout' => false],
+            innerContent: [\sprintf('<figure class="wp-block-table">%s</figure>', $content)],
         );
     }
 
@@ -124,13 +129,10 @@ class TableConverter implements TagConverterInterface
             }
 
             $class = $processor->get_attribute('class');
+            $align = \is_string($class) ? HtmlUtils::extractTextAlign($class) : null;
 
-            if (!\is_string($class)) {
-                continue;
-            }
-
-            if (\preg_match('/\bhas-text-align-(left|center|right|justify)\b/', $class, $m)) {
-                $processor->set_attribute('data-align', $m[1]);
+            if ($align !== null) {
+                $processor->set_attribute('data-align', $align);
             }
         }
 
