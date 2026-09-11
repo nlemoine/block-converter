@@ -1,0 +1,105 @@
+name: QA
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: versions
+        uses: WyriHaximus/github-action-composer-php-versions-in-range@7c91c459140becf43d93d3975070f308ab791949  # v1.16.2
+        with:
+          upcomingReleases: true
+
+  tests:
+    needs: php-versions
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.wp == 'trunk' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJson(needs.php-versions.outputs.versions) }}
+        wp: ['latest']
+        include:
+          - php: '8.4'
+            wp: 'trunk'
+    name: PHP ${{ matrix.php }} | WP ${{ matrix.wp }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f  # 2.37.0
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      - run: composer test
+        env:
+          WP_VERSION: ${{ matrix.wp }}
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f  # 2.37.0
+        with:
+          php-version: '8.4'
+          coverage: pcov
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      - run: php -d pcov.enabled=1 -d pcov.directory=src vendor/bin/phpunit --coverage-clover build/coverage.xml
+      - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe  # v5.5.4
+        with:
+          files: build/coverage.xml
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Mutation testing on what a pull request changes, reported as GitHub
+  # annotations. The full run takes minutes and is meant for a local pass;
+  # Infection also aborts on PHP 8.5, where the sqlite plugin writes
+  # deprecations to STDERR during the initial test run, so this is pinned.
+  mutation-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f  # 2.37.0
+        with:
+          php-version: '8.4'
+          coverage: pcov
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      - run: composer infection:diff
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f  # 2.37.0
+        with:
+          php-version: '8.4'
+          coverage: none
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      - run: composer phpstan
+      - run: composer rector
+
+  coding-standards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f  # 2.37.0
+        with:
+          php-version: '8.4'
+          coverage: none
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      - run: composer cs
+      - run: composer normalize --dry-run

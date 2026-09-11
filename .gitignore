@@ -1,0 +1,16 @@
+# Composer
+/wp-content
+/composer.lock
+/vendor
+
+# QA
+/phpstan.neon
+/phpcs.xml
+/phpunit.xml
+/infection.json5
+/.phpunit.result.cache
+/.phpunit.cache
+/tmp
+
+# Fixtures
+tests/fixtures/html/

@@ -1,0 +1,53 @@
+{
+    $schema: "vendor/infection/infection/resources/schema.json",
+    source: {
+        directories: ["src"],
+    },
+    tmpDir: "tmp/infection",
+    // The Mantle/WordPress bootstrap costs ~1s per process; leave headroom for
+    // mutants that push a converter into a slow path.
+    timeout: 30,
+    testFramework: "phpunit",
+    // Run this on PHP 8.4. Infection aborts the initial test run on the first
+    // byte written to STDERR (InitialTestsRunner::run), and under PHP 8.5 the
+    // sqlite-database-integration plugin logs PDO::sqliteCreateFunction()
+    // deprecations there. WordPress forces error_reporting(E_ALL) in
+    // wp_debug_mode(), so no ini override from here can suppress them.
+    // Both suites run in ~3.5s combined, so mutants are checked against the
+    // integration coverage too (most converters are only exercised there).
+    testFrameworkOptions: "--no-progress",
+    logs: {
+        text: "tmp/infection/infection.log",
+        summary: "tmp/infection/summary.log",
+        html: "tmp/infection/infection.html",
+    },
+    mutators: {
+        "@default": true,
+        // Guards that no input can reach, so their mutants are equivalent by
+        // construction rather than untested. Each is also marked
+        // @codeCoverageIgnore at the call site with the same reasoning.
+        "global-ignoreSourceCodeByRegex": [
+            // The DOM parser always returns a node list; these checks only
+            // satisfy the nullable union in childNodes()' signature.
+            ".*children instanceof SimpleHtmlDomNodeInterface.*",
+            // Utf8Fixer's guard on its optional package, which is installed
+            // whenever the suite runs.
+            ".*class_exists\\(UTF8::class\\).*",
+            // The caption content was matched against an <img> before this.
+            ".*processor->next_tag\\(\\['tag_name' => 'img'\\]\\).*",
+            // ImageConverter always wraps its output in a <figure>.
+            ".*closing === false.*",
+        ],
+    },
+    // Baseline measured on 2026-09-09 with --with-uncovered (see the composer
+    // scripts): 1511 mutants, 1398 killed, 69 escaped, 28 ignored as
+    // equivalent, 16 on code no test reaches. MSI 94.27%, covered MSI 95.30%.
+    //
+    // Those 16 sit on the defensive guards marked @codeCoverageIgnore: PHPUnit
+    // drops them from coverage but Infection still mutates them, and the
+    // regexes above match the `if` line without reaching the `return` inside
+    // it. Widening them to catch `return false` would silence far more than
+    // these guards, so the residue is left visible and counted instead.
+    minMsi: 94,
+    minCoveredMsi: 95,
+}
