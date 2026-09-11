@@ -2,6 +2,17 @@
     "name": "n5s/block-converter",
     "description": "A library to convert legacy or arbitrary HTML content into WordPress blocks.",
     "type": "library",
+    "keywords": [
+        "wordpress",
+        "gutenberg",
+        "blocks",
+        "block-editor",
+        "html",
+        "converter",
+        "migration",
+        "shortcodes",
+        "legacy-content"
+    ],
     "authors": [
         {
             "name": "Nicolas Lemoine",
@@ -9,6 +20,11 @@
             "homepage": "https://n5s.dev/"
         }
     ],
+    "homepage": "https://github.com/nlemoine/block-converter",
+    "support": {
+        "issues": "https://github.com/nlemoine/block-converter/issues",
+        "source": "https://github.com/nlemoine/block-converter"
+    },
     "require": {
         "php": ">=8.3",
         "psr/log": "^1 || ^2 || ^3",
