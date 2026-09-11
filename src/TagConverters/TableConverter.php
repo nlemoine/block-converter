@@ -29,6 +29,8 @@ class TableConverter implements TagConverterInterface
             return null;
         }
 
+        $this->stripStructuralWhitespace($element);
+
         $content = $element->html();
 
         $content = $this->ensureTbody($content, $element);
@@ -39,6 +41,45 @@ class TableConverter implements TagConverterInterface
             attributes: ['className' => 'is-style-regular'],
             innerContent: [\sprintf('<figure class="wp-block-table is-style-regular">%s</figure>', $content)],
         );
+    }
+
+    /**
+     * Drop the whitespace between a table's structural tags.
+     *
+     * wpautop() puts a newline around every <tr> and <td>, and whether the
+     * parser then places that newline before or after the <tbody> it inserts
+     * on its own depends on the libxml build: PHP 8.3 and 8.4 disagreed on
+     * CI, and one wrapped the rows here instead. Text between table, section
+     * and row tags is not content, and Gutenberg's own table block carries
+     * none, so it goes, and the output reads the same on every build.
+     */
+    private function stripStructuralWhitespace(SimpleHtmlDomInterface $element): void
+    {
+        $node = $element->getNode();
+        $document = $node->ownerDocument;
+
+        if (!$document instanceof \DOMDocument) {
+            return;
+        }
+
+        $xpath = new \DOMXPath($document);
+        $blanks = $xpath->query('.//text()[normalize-space(.) = ""]', $node);
+
+        if ($blanks === false) {
+            return;
+        }
+
+        foreach ($blanks as $blank) {
+            $parent = $blank->parentNode;
+
+            if (
+                $blank instanceof \DOMNode
+                && $parent instanceof \DOMElement
+                && \in_array(\strtolower($parent->tagName), ['table', 'thead', 'tbody', 'tfoot', 'tr'], true)
+            ) {
+                $parent->removeChild($blank);
+            }
+        }
     }
 
     /**
