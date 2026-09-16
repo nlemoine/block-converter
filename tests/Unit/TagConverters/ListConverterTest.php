@@ -174,6 +174,16 @@ HTML;
         $this->assertStringContainsString('Child', $result);
     }
 
+    public function testListItemWithNestedListKeepsWhitespaceAroundInlineElements(): void
+    {
+        // The container path appends each loose child as a string, and a
+        // stringified #text node is trimmed: "Hello <strong>x</strong> world"
+        // came out as "Hello<strong>x</strong>world".
+        $result = $this->converter->convert('<ul><li>Hello <strong>x</strong> world<ul><li>Child</li></ul></li></ul>');
+
+        $this->assertStringContainsString('<li>Hello <strong>x</strong> world<!-- wp:list -->', $result);
+    }
+
     public function testListItemWithLinkAndNestedList(): void
     {
         $html = '<ul><li><a href="https://example.com">Link</a><ul><li>Nested</li></ul></li></ul>';

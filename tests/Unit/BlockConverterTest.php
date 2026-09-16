@@ -200,6 +200,16 @@ HTML;
         $this->assertStringContainsString('after text', $result);
     }
 
+    public function testUnwrappedParagraphKeepsWhitespaceAroundInlineElements(): void
+    {
+        // Stringifying a #text child went through html(), whose output is
+        // trimmed, so the spaces on either side of an inline element vanished:
+        // "Voici, <strong>bravo</strong> à" came out as "Voici,<strong>bravo</strong>à".
+        $result = $this->converter->convert('<p>Voici, <strong>bravo</strong> à <a href="#">Jon</a>. <img src="https://example.com/a.jpg"></p>');
+
+        $this->assertStringContainsString('<p>Voici, <strong>bravo</strong> à <a href="#">Jon</a>.</p>', $result);
+    }
+
     public function testParagraphWithObjectUnwraps(): void
     {
         $result = $this->converter->convert('<p><object data="https://example.com/flash.swf" type="application/x-shockwave-flash"></object></p>');
