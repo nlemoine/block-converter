@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/nlemoine/block-converter/compare/0.1.0...0.1.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* keep whitespace around inline elements when unwrapping ([ca80043](https://github.com/nlemoine/block-converter/commit/ca800439882a405f7d138ae36b02e5dd690e5190))
+
 ## 0.1.0 (2026-09-11)
 
 
