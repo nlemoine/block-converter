@@ -115,7 +115,7 @@ class BlockConverter
                 && !$this->hasBlockContent($child);
 
             if ($isInline) {
-                $inlineBuffer .= (string) $child;
+                $inlineBuffer .= $this->serializeChild($child);
                 continue;
             }
 
@@ -138,6 +138,20 @@ class BlockConverter
     }
 
     /**
+     * Serialize a child node the way its parent's innerHtml() would.
+     *
+     * Casting a node to string goes through html(), whose output is trimmed.
+     * An element is unaffected since its tags shield the whitespace, but a
+     * #text node is nothing but its text, so the spaces on either side of an
+     * inline sibling were lost. text() on character data returns the node
+     * value untouched, entities included.
+     */
+    private function serializeChild(SimpleHtmlDomInterface $child): string
+    {
+        return $child->getTag() === '#text' ? $child->text() : $child->html();
+    }
+
+    /**
      * If the inline buffer has non-empty content, create a paragraph block and reset.
      *
      * @param Block[] $blocks
@@ -148,6 +162,24 @@ class BlockConverter
 
         if ($trimmed !== '') {
             $blocks[] = new Block('paragraph', innerContent: ['<p>' . $trimmed . '</p>']);
+        }
+
+        $buffer = '';
+    }
+
+    /**
+     * Append the buffered loose content of a container to the block and reset.
+     *
+     * The run is trimmed at its ends only. The editor writes a list item as
+     * <li>content<!-- wp:list -->, with nothing between the text and the
+     * nested block, while the spaces around an inline element inside the run
+     * have to survive. An empty run appends nothing, so two inner blocks with
+     * no text between them stay adjacent.
+     */
+    private function flushLooseContent(string &$buffer, Block $block): void
+    {
+        if ($buffer !== '') {
+            $block->appendContent(HtmlUtils::trim($buffer));
         }
 
         $buffer = '';
@@ -439,6 +471,10 @@ class BlockConverter
         }
         // @codeCoverageIgnoreEnd
 
+        // Loose children (text, inline elements) between inner blocks are
+        // buffered and appended as one run, see flushLooseContent().
+        $looseContent = '';
+
         foreach ($children as $child) {
             $childTag = $child->getTag();
 
@@ -452,6 +488,8 @@ class BlockConverter
                 if ($childResult !== null) {
                     $items = \is_array($childResult) ? $childResult : [$childResult];
 
+                    $this->flushLooseContent($looseContent, $block);
+
                     foreach ($items as $i => $b) {
                         if ($i > 0) {
                             $block->appendContent("\n\n");
@@ -463,8 +501,10 @@ class BlockConverter
                 }
             }
 
-            $block->appendContent((string) $child);
+            $looseContent .= $this->serializeChild($child);
         }
+
+        $this->flushLooseContent($looseContent, $block);
 
         // Normalize whitespace: replace empty strings between null placeholders
         // with "\n\n" to match parse_blocks() output.
