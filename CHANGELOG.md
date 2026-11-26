@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/nlemoine/block-converter/compare/0.1.1...0.1.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* keep markup nested past libxml's depth limit ([5d25b53](https://github.com/nlemoine/block-converter/commit/5d25b53367cd769cc47dc0707709e256a6034c20))
+
 ## [0.1.1](https://github.com/nlemoine/block-converter/compare/0.1.0...0.1.1) (2026-09-16)
 
 
