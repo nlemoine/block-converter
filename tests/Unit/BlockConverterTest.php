@@ -441,6 +441,42 @@ HTML;
         $this->assertSame(['tag' => 'article'], $records[0]['context']);
     }
 
+    public function testMarkupTooDeepForTheParserIsKeptAndLogged(): void
+    {
+        $html = '<p>' . \str_repeat('<span>', 3000) . 'IMPORTANT' . \str_repeat('</span>', 3000) . '</p>';
+
+        $probe = new \DOMDocument();
+        $previous = \libxml_use_internal_errors(true);
+        $probe->loadHTML($html, \LIBXML_PARSEHUGE);
+        \libxml_clear_errors();
+        \libxml_use_internal_errors($previous);
+
+        if (\str_contains($probe->textContent, 'IMPORTANT')) {
+            $this->markTestSkipped('This libxml has no depth limit (before 2.12).');
+        }
+
+        $records = [];
+        $logger = new class ($records) extends AbstractLogger {
+            /** @param list<array{level: mixed, message: string, context: array<string, mixed>}> $records */
+            public function __construct(private array &$records)
+            {
+            }
+
+            public function log(mixed $level, \Stringable|string $message, array $context = []): void
+            {
+                $this->records[] = ['level' => $level, 'message' => (string) $message, 'context' => $context];
+            }
+        };
+
+        $converter = new BlockConverter(BlockConverter::createDefault()->getRegistry(), $logger);
+
+        $this->assertSame(['core/html'], $this->blockNames($converter->convert($html)));
+        $this->assertCount(1, $records);
+        $this->assertSame('warning', $records[0]['level']);
+        $this->assertSame('Markup nested too deep for the HTML parser, using HTML fallback', $records[0]['message']);
+        $this->assertSame(['limit' => 2048], $records[0]['context']);
+    }
+
     public function testNothingIsLoggedWithoutALogger(): void
     {
         // The null-safe call must stay null-safe.
