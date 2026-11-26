@@ -26,6 +26,12 @@
         "issues": "https://github.com/nlemoine/block-converter/issues",
         "source": "https://github.com/nlemoine/block-converter"
     },
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/nlemoine"
+        }
+    ],
     "require": {
         "php": ">=8.3",
         "psr/log": "^1 || ^2 || ^3",
