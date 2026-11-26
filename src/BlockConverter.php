@@ -392,7 +392,19 @@ class BlockConverter
      */
     private function domConvert(string $html, ?WP_Post $post): array
     {
-        $dom = HtmlUtils::parse('<body>' . $html . '</body>');
+        $document = '<body>' . $html . '</body>';
+
+        // Past libxml's depth limit the tree loses everything below it. Keep
+        // the markup whole rather than convert what is left of it.
+        if (HtmlUtils::exceedsParserDepth($document)) {
+            $this->logger?->warning('Markup nested too deep for the HTML parser, using HTML fallback', [
+                'limit' => HtmlUtils::MAX_PARSER_DEPTH,
+            ]);
+
+            return [new Block('html', innerContent: [$html])];
+        }
+
+        $dom = HtmlUtils::parse($document);
         $childNodes = $dom->findMultiOrFalse('//body/*');
 
         if ($childNodes === false) {
