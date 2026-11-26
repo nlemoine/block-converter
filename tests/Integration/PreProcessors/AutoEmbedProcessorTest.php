@@ -34,7 +34,6 @@ final class AutoEmbedProcessorTest extends WpTestCase
         'https://www.reddit.com/oembed*' => ['type' => 'rich', 'provider_name' => 'Reddit', 'width' => 600, 'height' => 0],
         'https://www.tumblr.com/oembed*' => ['type' => 'rich', 'provider_name' => 'Tumblr', 'width' => 540, 'height' => 0],
         'https://www.ted.com/services/v1/oembed*' => ['type' => 'video', 'provider_name' => 'TED', 'width' => 560, 'height' => 315],
-        'https://api.imgur.com/oembed*' => ['type' => 'rich', 'provider_name' => 'Imgur', 'width' => 540, 'height' => 500],
         'https://www.pinterest.com/oembed*' => ['type' => 'rich', 'provider_name' => 'Pinterest', 'width' => 600, 'height' => 0],
         'https://embed.bsky.app/oembed*' => ['type' => 'rich', 'provider_name' => 'Bluesky', 'width' => 550, 'height' => 0],
         'https://www.kickstarter.com/services/oembed*' => ['type' => 'rich', 'provider_name' => 'Kickstarter', 'width' => 640, 'height' => 480],
@@ -143,7 +142,6 @@ final class AutoEmbedProcessorTest extends WpTestCase
         yield 'reddit' => ['https://www.reddit.com/r/wordpress/comments/abc123/some_post', 'abc123'];
         yield 'tumblr' => ['https://example.tumblr.com/post/123456789', '123456789'];
         yield 'ted' => ['https://www.ted.com/talks/some_talk', 'some_talk'];
-        yield 'imgur' => ['https://imgur.com/gallery/abc123', 'abc123'];
         yield 'pinterest' => ['https://www.pinterest.com/pin/123456789/', '123456789'];
         yield 'bluesky' => ['https://bsky.app/profile/user.bsky.social/post/abc123', 'abc123'];
         yield 'kickstarter' => ['https://www.kickstarter.com/projects/user/project-name', 'project-name'];
