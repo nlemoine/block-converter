@@ -168,4 +168,81 @@ final class HtmlUtilsTest extends TestCase
             HtmlUtils::removeClass("<img class=\"alignleft\n  size-full\" src=\"/a.jpg\">", 'img', 'alignleft'),
         );
     }
+
+    public function testManyShallowTagsDoNotExceedParserDepth(): void
+    {
+        $this->assertFalse(HtmlUtils::exceedsParserDepth(\str_repeat('<p>a</p>', 3000)));
+    }
+
+    /**
+     * Without LIBXML_PARSEHUGE every libxml release stops at 256 levels.
+     */
+    public function testDepthPastTheDefaultLimitIsAllowed(): void
+    {
+        $html = $this->nested(300) . \str_repeat('<br>', 3000);
+
+        $this->assertFalse(HtmlUtils::exceedsParserDepth($html));
+    }
+
+    public function testDepthPastTheHardLimitMatchesWhatLibxmlKeeps(): void
+    {
+        $this->assertSame($this->libxmlCapsDepth(), HtmlUtils::exceedsParserDepth($this->nested(3000)));
+    }
+
+    public function testParserDepthCheckIgnoresEarlierErrors(): void
+    {
+        $previous = \libxml_use_internal_errors(true);
+
+        try {
+            // Queues an "Excessive depth" error before the check runs.
+            (new \DOMDocument())->loadHTML($this->nested(300));
+            $this->assertNotSame([], \libxml_get_errors());
+
+            $this->assertFalse(HtmlUtils::exceedsParserDepth(\str_repeat('<p>a</p>', 3000)));
+        } finally {
+            \libxml_clear_errors();
+            \libxml_use_internal_errors($previous);
+        }
+    }
+
+    public function testParserDepthCheckLeavesLibxmlStateAsFound(): void
+    {
+        $html = \str_repeat('<p>a</p>', 3000) . '</div>';
+
+        $previous = \libxml_use_internal_errors(true);
+
+        try {
+            HtmlUtils::exceedsParserDepth($html);
+
+            // The stray </div> is an error the check must not leave behind.
+            $this->assertSame([], \libxml_get_errors());
+        } finally {
+            \libxml_use_internal_errors($previous);
+        }
+
+        \libxml_use_internal_errors(false);
+        HtmlUtils::exceedsParserDepth($html);
+
+        $this->assertFalse(\libxml_use_internal_errors($previous));
+    }
+
+    private function nested(int $depth): string
+    {
+        return '<p>' . \str_repeat('<span>', $depth) . 'IMPORTANT' . \str_repeat('</span>', $depth) . '</p>';
+    }
+
+    /**
+     * Whether this libxml drops what lies past its depth limit (2.12 and
+     * later), found from what survives rather than from its messages.
+     */
+    private function libxmlCapsDepth(): bool
+    {
+        $previous = \libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML($this->nested(3000), \LIBXML_PARSEHUGE);
+        \libxml_clear_errors();
+        \libxml_use_internal_errors($previous);
+
+        return !\str_contains($document->textContent, 'IMPORTANT');
+    }
 }
