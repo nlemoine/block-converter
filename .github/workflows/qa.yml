@@ -88,6 +88,9 @@ jobs:
           php-version: '8.4'
           coverage: pcov
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda  # 4.0.0
+      # Mantle installs WordPress on the first run and reports it on STDERR,
+      # which Infection reads as a failing initial test run. Install it first.
+      - run: composer test
       - run: composer infection:diff
 
   static-analysis:
