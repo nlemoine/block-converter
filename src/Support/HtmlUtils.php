@@ -11,18 +11,56 @@ use WP_HTML_Tag_Processor;
 class HtmlUtils
 {
     /**
+     * The deepest tree recent libxml builds, LIBXML_PARSEHUGE or not.
+     */
+    public const int MAX_PARSER_DEPTH = 2048;
+
+    /**
      * Parse an HTML string the way every DOM stage of the pipeline must.
      *
      * libxml stops building the tree 256 elements deep and says nothing the
      * caller can see — voku clears its error list — so the text past that
      * point simply vanished, and 300 nested <div> around an article deleted
      * the article while reporting a successful conversion. LIBXML_PARSEHUGE
-     * lifts the limit (verified to 5000 levels); the input's own size is
-     * then the only bound, as it already is for every other stage.
+     * lifts the limit, but only to MAX_PARSER_DEPTH on libxml 2.12 and later
+     * (older releases have no limit at all). Check exceedsParserDepth()
+     * first when the input can be arbitrarily deep.
      */
     public static function parse(string $html): HtmlDomParser
     {
         return HtmlDomParser::str_get_html($html, \LIBXML_PARSEHUGE);
+    }
+
+    /**
+     * Whether libxml would drop part of this HTML for nesting too deep.
+     *
+     * Asked of libxml itself, since the limit depends on its version. A tree
+     * cannot be deeper than the markup has tags, so the second parse is only
+     * paid for documents with more than MAX_PARSER_DEPTH of them.
+     */
+    public static function exceedsParserDepth(string $html): bool
+    {
+        if (\substr_count($html, '<') <= self::MAX_PARSER_DEPTH) {
+            return false;
+        }
+
+        $internalErrors = \libxml_use_internal_errors(true);
+        \libxml_clear_errors();
+
+        try {
+            (new \DOMDocument())->loadHTML($html, \LIBXML_PARSEHUGE | \LIBXML_NONET);
+
+            // The error code differs between libxml releases, the message
+            // does not.
+            // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.array_anyFound -- provided by symfony/polyfill-php84 below PHP 8.4.
+            return \array_any(
+                \libxml_get_errors(),
+                static fn (\LibXMLError $error): bool => \str_starts_with($error->message, 'Excessive depth'),
+            );
+        } finally {
+            \libxml_clear_errors();
+            \libxml_use_internal_errors($internalErrors);
+        }
     }
 
     /**
